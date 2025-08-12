@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-  "build": "tsc -p tsconfig.json",
-  "migrate": "tsx src/migrate.ts",
-  "seed": "tsx src/seed.ts",
-  "start:prod": "npm run build && node dist/server.js"
+    "build": "tsc -p tsconfig.json",
+    "migrate": "tsx src/migrate.ts",
+    "seed": "tsx src/seed.ts",
+    "start:prod": "npm run build && node dist/server.js",
+    "test:encryption": "npm run build && node test-encryption.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
