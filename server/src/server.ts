@@ -334,6 +334,77 @@ app.post('/events/bulk', async (req, res) => {
   }
 });
 
+// Device token registration
+app.post('/device-tokens', async (req, res) => {
+  const schema = z.object({
+    token: z.string().min(1),
+    type: z.enum(['ios', 'android']),
+    deviceId: z.string().min(1),
+    platform: z.string(),
+    appVersion: z.string().optional(),
+  });
+  
+  const v = schema.safeParse(req.body);
+  if (!v.success) return res.status(400).json(v.error.flatten());
+  
+  const { token, type, deviceId, platform, appVersion } = v.data;
+  
+  const sql = `
+    INSERT INTO device_tokens (device_id, token, type, platform, app_version, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+    ON CONFLICT (device_id) 
+    DO UPDATE SET token = $2, type = $3, platform = $4, app_version = $5, updated_at = NOW()
+    RETURNING device_id
+  `;
+  
+  try {
+    const r = await pool.query(sql, [deviceId, token, type, platform, appVersion || '1.0.0']);
+    res.status(201).json({ success: true, deviceId: r.rows[0].device_id });
+  } catch (e: any) {
+    console.error('Device token registration error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Location updates
+app.post('/location-updates', async (req, res) => {
+  const schema = z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracy: z.number().min(0),
+    timestamp: z.string().datetime(),
+    deviceId: z.string().min(1),
+  });
+  
+  const v = schema.safeParse(req.body);
+  if (!v.success) return res.status(400).json(v.error.flatten());
+  
+  const { latitude, longitude, accuracy, timestamp, deviceId } = v.data;
+  
+  const sql = `
+    INSERT INTO location_updates (device_id, latitude, longitude, accuracy, timestamp, created_at)
+    VALUES ($1, $2, $3, $4, $5::timestamp, NOW())
+    RETURNING id
+  `;
+  
+  try {
+    const r = await pool.query(sql, [deviceId, latitude, longitude, accuracy, timestamp]);
+    
+    // Calculate next suggested update interval based on movement patterns
+    // For now, return a default interval, but this could be dynamic
+    const nextSuggestedUpdateSec = 300; // 5 minutes default
+    
+    res.status(201).json({ 
+      success: true, 
+      id: r.rows[0].id,
+      nextSuggestedUpdateSec 
+    });
+  } catch (e: any) {
+    console.error('Location update error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {
   console.log(`server listening on :${port}`);
