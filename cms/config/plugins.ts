@@ -1,1 +1,6 @@
-export default () => ({});
+export default () => ({
+  'geolocation': {
+    enabled: true,
+    resolve: './src/plugins/geolocation'
+  }
+});

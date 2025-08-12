@@ -1,0 +1,15 @@
+{
+  "name": "geolocation",
+  "displayName": "Geolocation",
+  "description": "Geolocation plugin with geofence catch-up evaluation",
+  "version": "1.0.0",
+  "author": {
+    "name": "Developer"
+  },
+  "strapi": {
+    "displayName": "Geolocation",
+    "name": "geolocation", 
+    "description": "Geolocation plugin with geofence catch-up evaluation",
+    "kind": "plugin"
+  }
+}
