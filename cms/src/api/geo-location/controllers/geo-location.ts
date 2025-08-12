@@ -37,14 +37,14 @@ export default factories.createCoreController('api::geo-location.geo-location', 
         logger.warn(`[F-002] Invalid location data received`, {
           spec_id: 'F-002',
           user_id: userId,
-          errors: validationResult.error.errors,
+          errors: validationResult.error.issues,
         });
 
         ctx.status = 400;
         ctx.body = {
           error: 'Validation failed',
           message: 'Invalid location data provided',
-          details: validationResult.error.errors,
+          details: validationResult.error.issues,
         };
         return;
       }
