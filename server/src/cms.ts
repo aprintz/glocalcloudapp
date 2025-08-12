@@ -1,8 +1,20 @@
 import 'dotenv/config';
+import { secretsService } from './secrets.js';
 
-const STRAPI_BASE_URL = process.env.STRAPI_BASE_URL || 'http://localhost:1337';
-const STRAPI_TOKEN = process.env.STRAPI_TOKEN || '';
+let STRAPI_BASE_URL: string;
+let STRAPI_TOKEN: string;
 const STRAPI_DEBUG = process.env.STRAPI_DEBUG === '1';
+
+// Initialize secrets on first use
+let secretsInitialized = false;
+async function initializeSecrets() {
+  if (!secretsInitialized) {
+    const secrets = await secretsService.getAllSecrets();
+    STRAPI_BASE_URL = secrets.STRAPI_BASE_URL || 'http://localhost:1337';
+    STRAPI_TOKEN = secrets.STRAPI_TOKEN || '';
+    secretsInitialized = true;
+  }
+}
 
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>) {
   const url = new URL(path.startsWith('http') ? path : `${STRAPI_BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`);
@@ -16,8 +28,9 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
 }
 
 export async function strapiGet<T = any>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  await initializeSecrets();
+  
   const url = buildUrl(path, params);
-  console.log(STRAPI_TOKEN);
   if (STRAPI_DEBUG) console.log('[strapi] GET', url);
   try{
   const r = await fetch(url, {

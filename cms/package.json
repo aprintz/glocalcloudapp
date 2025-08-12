@@ -15,6 +15,8 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
+    "@azure/identity": "^4.11.1",
+    "@azure/keyvault-secrets": "^4.10.0",
     "@strapi/plugin-cloud": "5.21.0",
     "@strapi/plugin-users-permissions": "5.21.0",
     "@strapi/strapi": "5.21.0",
