@@ -28,14 +28,14 @@ class BackgroundLocationServiceClass {
 
   async initialize(): Promise<void> {
     // Define the background location task
-    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, ({ data, error }) => {
+    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
       if (error) {
         console.error('Background location task error:', error);
         return;
       }
       if (data) {
         const { locations } = data as any;
-        this.handleBackgroundLocationUpdate(locations);
+        await this.handleBackgroundLocationUpdate(locations);
       }
     });
 

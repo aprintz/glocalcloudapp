@@ -10,6 +10,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -150,7 +152,10 @@ class PushNotificationServiceClass {
         body,
         data: { type: 'test' },
       },
-      trigger: { seconds },
+      trigger: { 
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds 
+      },
     });
   }
 
