@@ -1,0 +1,97 @@
+{
+  "kind": "collectionType",
+  "collectionName": "geofence_hits",
+  "info": {
+    "singularName": "geofence-hit",
+    "pluralName": "geofence-hits",
+    "displayName": "Geofence Hit",
+    "description": "Records of geofence entries/exits for deduplication"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "indexes": [
+      { "name": "hit_user_geofence", "type": "index", "columns": ["user_id", "geofence_id"] },
+      { "name": "hit_timestamp", "type": "index", "columns": ["triggered_at"] },
+      { "name": "hit_tenant", "type": "index", "columns": ["tenant"] }
+    ]
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "content-type-builder": {
+      "visible": true
+    }
+  },
+  "attributes": {
+    "user_id": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "tenant": {
+      "type": "string",
+      "required": false,
+      "default": "public",
+      "maxLength": 100
+    },
+    "geofence": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::geofences.geofence"
+    },
+    "geofence_id": {
+      "type": "integer",
+      "required": true
+    },
+    "event_type": {
+      "type": "enumeration",
+      "enum": ["enter", "exit"],
+      "required": true
+    },
+    "latitude": {
+      "type": "decimal",
+      "required": true
+    },
+    "longitude": {
+      "type": "decimal",
+      "required": true
+    },
+    "distance_from_center": {
+      "type": "decimal",
+      "required": false
+    },
+    "triggered_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "notification_sent": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "notification_sent_at": {
+      "type": "datetime",
+      "required": false
+    },
+    "suppressed": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "suppression_reason": {
+      "type": "string",
+      "required": false,
+      "maxLength": 500
+    },
+    "spec_id": {
+      "type": "string",
+      "required": true,
+      "default": "F-003",
+      "maxLength": 50
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}
