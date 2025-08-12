@@ -17,9 +17,23 @@ export default (): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.aprintz.glocalcloudapp',
+    infoPlist: {
+      UIBackgroundModes: ['location'],
+      NSLocationAlwaysAndWhenInUseUsageDescription:
+        'This app needs location access to provide location-based notifications.',
+      NSLocationWhenInUseUsageDescription:
+        'This app needs location access to provide location-based notifications.',
+    },
   },
   android: {
     package: 'com.aprintz.glocalcloudapp',
+    permissions: [
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_FINE_LOCATION',
+      'ACCESS_BACKGROUND_LOCATION',
+      'FOREGROUND_SERVICE',
+      'FOREGROUND_SERVICE_LOCATION',
+    ],
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY || ''
@@ -31,7 +45,20 @@ export default (): ExpoConfig => ({
     output: 'single',
     favicon: './assets/images/favicon.png'
   },
-  plugins: ['expo-router', 'expo-font', 'expo-web-browser', 'expo-maps'],
+  plugins: [
+    'expo-router', 
+    'expo-font', 
+    'expo-web-browser', 
+    'expo-maps',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/images/icon.png',
+        color: '#ffffff',
+        defaultChannel: 'default',
+      },
+    ],
+  ],
   experiments: {
     typedRoutes: true
   }

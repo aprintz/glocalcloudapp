@@ -10,13 +10,17 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-import { MapPin, Bell, Shield, Trash2, Info } from 'lucide-react-native';
+import { MapPin, Bell, Trash2, Info, Smartphone, Wifi } from 'lucide-react-native';
 import { LocationService } from '@/services/LocationService';
+import { PushNotificationService } from '@/services/PushNotificationService';
+import { BackgroundLocationService } from '@/services/BackgroundLocationService';
 
 export default function SettingsScreen() {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [backgroundLocationEnabled, setBackgroundLocationEnabled] = useState(false);
+  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false);
+  const [pushTokenRegistered, setPushTokenRegistered] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState<Location.LocationAccuracy>(Location.LocationAccuracy.Balanced);
 
   useEffect(() => {
@@ -35,6 +39,13 @@ export default function SettingsScreen() {
     // Check notification permission
     const { status: notificationStatus } = await Notifications.getPermissionsAsync();
     setNotificationsEnabled(notificationStatus === 'granted');
+
+    // Check background tracking status
+    setBackgroundTrackingEnabled(BackgroundLocationService.isBackgroundLocationRunning());
+
+    // Check push token registration
+    const deviceInfo = await PushNotificationService.getStoredDeviceInfo();
+    setPushTokenRegistered(!!deviceInfo);
   };
 
   const toggleLocationPermission = async () => {
@@ -110,10 +121,71 @@ export default function SettingsScreen() {
     );
   };
 
+  const toggleBackgroundTracking = async () => {
+    if (backgroundTrackingEnabled) {
+      await BackgroundLocationService.stopBackgroundLocationTracking();
+      setBackgroundTrackingEnabled(false);
+      Alert.alert('Success', 'Background location tracking stopped');
+    } else {
+      if (!backgroundLocationEnabled) {
+        Alert.alert(
+          'Permission Required', 
+          'Background location permission is required first'
+        );
+        return;
+      }
+      
+      const success = await BackgroundLocationService.startBackgroundLocationTracking();
+      if (success) {
+        setBackgroundTrackingEnabled(true);
+        Alert.alert('Success', 'Background location tracking started');
+      } else {
+        Alert.alert('Error', 'Failed to start background location tracking');
+      }
+    }
+  };
+
+  const testPushNotification = async () => {
+    await PushNotificationService.scheduleTestNotification(
+      'Test Notification',
+      'This is a test of native push notifications',
+      5
+    );
+    Alert.alert('Test Scheduled', 'A test notification will appear in 5 seconds');
+  };
+
+  const reregisterPushToken = async () => {
+    await PushNotificationService.registerTokenWithServer();
+    const deviceInfo = await PushNotificationService.getStoredDeviceInfo();
+    setPushTokenRegistered(!!deviceInfo);
+    Alert.alert('Success', 'Push token re-registered with server');
+  };
+
+  const testLocationUpdate = async () => {
+    const result = await BackgroundLocationService.triggerImmediateUpdate();
+    Alert.alert(
+      result.success ? 'Success' : 'Error', 
+      result.message || (result.success ? 'Location update sent' : 'Failed to send location update')
+    );
+  };
+
+  const showPushTokenInfo = async () => {
+    const deviceInfo = await PushNotificationService.getStoredDeviceInfo();
+    const token = PushNotificationService.getPushToken();
+    
+    Alert.alert(
+      'Push Token Info',
+      `Token: ${token ? token.slice(0, 20) + '...' : 'None'}\n` +
+      `Device ID: ${deviceInfo?.deviceId || 'None'}\n` +
+      `Type: ${deviceInfo?.type || 'None'}\n` +
+      `Last Registered: ${deviceInfo?.lastRegistered ? new Date(deviceInfo.lastRegistered).toLocaleString() : 'Never'}`
+    );
+  };
+
   const showAppInfo = () => {
     Alert.alert(
       'GeoNotify App',
-      'Version 1.0.0\n\nA location-based notification app that sends alerts when users enter or exit specified geographic areas.\n\nBuilt with React Native and Expo.',
+      'Version 1.0.0\n\nA location-based notification app that sends alerts when users enter or exit specified geographic areas.\n\nNow with native push notifications and background location tracking.\n\nBuilt with React Native and Expo.',
       [{ text: 'OK' }]
     );
   };
@@ -168,6 +240,24 @@ export default function SettingsScreen() {
 
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
+            <Wifi size={24} color="#9333EA" />
+            <View style={styles.settingText}>
+              <Text style={styles.settingName}>Background Tracking</Text>
+              <Text style={styles.settingDescription}>
+                Send location updates to server in background
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={backgroundTrackingEnabled}
+            onValueChange={toggleBackgroundTracking}
+            trackColor={{ false: '#F3F4F6', true: '#9333EA' }}
+            thumbColor={backgroundTrackingEnabled ? '#FFFFFF' : '#9CA3AF'}
+          />
+        </View>
+
+        <View style={styles.settingItem}>
+          <View style={styles.settingInfo}>
             <Bell size={24} color="#10B981" />
             <View style={styles.settingText}>
               <Text style={styles.settingName}>Notifications</Text>
@@ -207,6 +297,48 @@ export default function SettingsScreen() {
           onPress={() => setLocationAccuracy(Location.LocationAccuracy.High)}>
           <Text style={styles.optionText}>High Accuracy</Text>
           <Text style={styles.optionDescription}>Best accuracy, more battery usage</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Native Push Notifications</Text>
+        
+        <View style={styles.settingItem}>
+          <View style={styles.settingInfo}>
+            <Smartphone size={24} color={pushTokenRegistered ? '#10B981' : '#EF4444'} />
+            <View style={styles.settingText}>
+              <Text style={styles.settingName}>Push Token Registration</Text>
+              <Text style={styles.settingDescription}>
+                {pushTokenRegistered ? 'Registered with server' : 'Not registered'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity 
+            style={styles.actionIconButton} 
+            onPress={showPushTokenInfo}>
+            <Info size={20} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.actionButton} onPress={testPushNotification}>
+          <Bell size={20} color="#3B82F6" />
+          <Text style={[styles.actionButtonText, { color: '#3B82F6' }]}>
+            Test Push Notification
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={reregisterPushToken}>
+          <Smartphone size={20} color="#10B981" />
+          <Text style={[styles.actionButtonText, { color: '#10B981' }]}>
+            Re-register Token
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={testLocationUpdate}>
+          <MapPin size={20} color="#F59E0B" />
+          <Text style={[styles.actionButtonText, { color: '#F59E0B' }]}>
+            Send Location Update
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -329,6 +461,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginLeft: 12,
+  },
+  actionIconButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F3F4F6',
   },
   footer: {
     padding: 16,
