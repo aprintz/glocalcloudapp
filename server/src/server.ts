@@ -1,13 +1,22 @@
 import express from 'express';
 import cors from 'cors';
 import { z } from 'zod';
-import { pool, ping, query } from './db.js';
+import { getPool, ping, query } from './db.js';
 import { strapiGet } from './cms.js';
 import { TTLCache } from './cache.js';
+import { secretsService } from './secrets.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Initialize secrets
+let APP_API_KEY: string = '';
+async function initializeApiKey() {
+  if (!APP_API_KEY) {
+    APP_API_KEY = await secretsService.getSecret('app-api-key', 'APP_API_KEY');
+  }
+}
 
 app.get('/health', async (_req, res) => {
   try {
@@ -22,8 +31,8 @@ app.get('/health', async (_req, res) => {
 const cmsCache = new TTLCache<any>(Number(process.env.CMS_CACHE_TTL_MS || 15000));
 
 // Simple app authentication using a pre-shared API key
-const APP_API_KEY = process.env.APP_API_KEY || '';
-function requireAppKey(req: express.Request, res: express.Response, next: express.NextFunction) {
+async function requireAppKey(req: express.Request, res: express.Response, next: express.NextFunction) {
+  await initializeApiKey();
   if (!APP_API_KEY) return res.status(500).json({ error: 'APP_API_KEY not configured' });
   const headerKey = req.header('x-app-key') || '';
   const bearer = req.header('authorization')?.replace(/^Bearer\s+/i, '') || '';
@@ -143,7 +152,7 @@ app.get('/events/radius', async (req, res) => {
   `;
   const params: any[] = [lon, lat, meters];
   if (payload) params.push(payload);
-  const r = await pool.query(sql, params);
+  const r = await (await getPool()).query(sql, params);
   res.json(r.rows);
 });
 
@@ -172,7 +181,7 @@ app.get('/events/nearest', async (req, res) => {
   const params: any[] = [lon, lat];
   if (payload) params.push(payload);
   params.push(limit);
-  const r = await pool.query(sql, params);
+  const r = await (await getPool()).query(sql, params);
   res.json(r.rows);
 });
 
@@ -194,7 +203,7 @@ app.post('/events/polygon', async (req, res) => {
   `;
   const params: any[] = [JSON.stringify(v.data.polygon)];
   if (v.data.payload) params.push(v.data.payload);
-  const r = await pool.query(sql, params);
+  const r = await (await getPool()).query(sql, params);
   res.json(r.rows);
 });
 
@@ -218,7 +227,7 @@ app.post('/events', async (req, res) => {
     RETURNING id
   `;
   try {
-    const r = await pool.query(sql, [id ?? null, title, JSON.stringify(payload ?? {}), lon, lat]);
+    const r = await (await getPool()).query(sql, [id ?? null, title, JSON.stringify(payload ?? {}), lon, lat]);
     res.status(201).json({ id: r.rows[0].id });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -341,11 +350,11 @@ app.listen(port, () => {
 
 process.on('SIGINT', async () => {
   console.log('Shutting down...');
-  try { await pool.end(); } catch {}
+  try { await (await getPool()).end(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', async () => {
   console.log('Shutting down...');
-  try { await pool.end(); } catch {}
+  try { await (await getPool()).end(); } catch {}
   process.exit(0);
 });

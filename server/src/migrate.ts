@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { readFileSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { pool } from './db.js';
+import { getPool } from './db.js';
 
 async function run() {
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -10,6 +10,7 @@ async function run() {
   const files = readdirSync(dir)
     .filter(f => f.endsWith('.sql'))
     .sort();
+  const pool = await getPool();
   for (const f of files) {
     const p = join(dir, f);
     const sql = readFileSync(p, 'utf8');
@@ -22,6 +23,9 @@ async function run() {
 
 run().catch(async (e) => {
   console.error('Migration failed:', e);
-  try { await pool.end(); } catch {}
+  try { 
+    const pool = await getPool();
+    await pool.end(); 
+  } catch {}
   process.exit(1);
 });

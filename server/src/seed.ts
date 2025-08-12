@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { pool } from './db.js';
+import { getPool } from './db.js';
 
 async function run() {
   const pts = [
@@ -15,6 +15,7 @@ async function run() {
     values.push(`(gen_random_uuid(), $${i++}, '{}'::jsonb, ST_SetSRID(ST_MakePoint($${i++}, $${i++}), 4326)::geography)`);
     params.push(p.title, p.lon, p.lat);
   }
+  const pool = await getPool();
   await pool.query(`INSERT INTO events (id, title, payload, geog) VALUES ${values.join(', ')}` , params);
   console.log('Seeded', pts.length, 'events');
   await pool.end();
@@ -22,6 +23,9 @@ async function run() {
 
 run().catch(async (e) => {
   console.error('Seed failed:', e);
-  try { await pool.end(); } catch {}
+  try { 
+    const pool = await getPool();
+    await pool.end(); 
+  } catch {}
   process.exit(1);
 });

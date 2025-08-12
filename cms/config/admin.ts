@@ -1,20 +1,30 @@
-export default ({ env }) => ({
-  auth: {
-    secret: env('ADMIN_JWT_SECRET'),
-  },
-  apiToken: {
-    salt: env('API_TOKEN_SALT'),
-  },
-  transfer: {
-    token: {
-      salt: env('TRANSFER_TOKEN_SALT'),
+import { createEnhancedEnv, initializeSecrets } from '../src/env-enhancer';
+
+export default ({ env }) => {
+  // Initialize secrets loading (fire and forget for now)
+  initializeSecrets();
+  
+  // Create enhanced env function
+  const enhancedEnv = createEnhancedEnv(env);
+  
+  return {
+    auth: {
+      secret: enhancedEnv('ADMIN_JWT_SECRET'),
     },
-  },
-  secrets: {
-    encryptionKey: env('ENCRYPTION_KEY'),
-  },
-  flags: {
-    nps: env.bool('FLAG_NPS', true),
-    promoteEE: env.bool('FLAG_PROMOTE_EE', true),
-  },
-});
+    apiToken: {
+      salt: enhancedEnv('API_TOKEN_SALT'),
+    },
+    transfer: {
+      token: {
+        salt: enhancedEnv('TRANSFER_TOKEN_SALT'),
+      },
+    },
+    secrets: {
+      encryptionKey: enhancedEnv('ENCRYPTION_KEY'),
+    },
+    flags: {
+      nps: enhancedEnv.bool('FLAG_NPS', true),
+      promoteEE: enhancedEnv.bool('FLAG_PROMOTE_EE', true),
+    },
+  };
+};
