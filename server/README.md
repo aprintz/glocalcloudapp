@@ -83,6 +83,24 @@ And set `DATABASE_SSL=require` in env for the server to enable TLS.
   - `GET /cms/pages/:tenant/:slug` — disambiguated fetch when slugs repeat per tenant
 - Configure env in `server/.env`:
   - `STRAPI_BASE_URL=http://localhost:1337`
-  - Optionally `STRAPI_TOKEN` for private Strapi reads
+  - Optionally `STRAPI_TOKEN` for private Strapi reads (Read-Only API Token)
   - `APP_API_KEY=replace-with-a-strong-shared-secret`
   - `CMS_CACHE_TTL_MS=15000`
+
+### Making Strapi content readable
+
+You have two choices:
+
+1. Public role permissions (fast, less secure): In Strapi admin go to Settings → Users & Permissions Plugin → Roles → Public → enable `find` and `findOne` for Page → Save. Leave `STRAPI_TOKEN` unset.
+2. API Token (recommended): Settings → API Tokens → Create new → Read-only → Copy token once → set `STRAPI_TOKEN=<token>` in `server/.env` and restart the Node server. Keep Public role permissions for Page disabled.
+
+Pages must be Published (not draft) to appear because we query with `publicationState=live`.
+
+### Troubleshooting 502 errors from /cms/pages
+
+`502` from the server usually wraps a Strapi error:
+- 403 in Strapi → Public role lacks permission and no valid `STRAPI_TOKEN` provided.
+- Network/connection refused → Check `STRAPI_BASE_URL`, ensure Strapi is running.
+- Token invalid/expired → Regenerate API token, update `STRAPI_TOKEN`, restart server.
+
+To debug, temporarily add logging in `server/src/cms.ts` before throwing (or check server console) and hit the Strapi URL directly with curl.
