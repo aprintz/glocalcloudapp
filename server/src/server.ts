@@ -355,6 +355,30 @@ app.post('/events/bulk', async (req, res) => {
   }
 });
 
+// User location tracking: POST /locations { userId, lat, lon, accuracy? }
+app.post('/locations', requireAppKey, async (req, res) => {
+  const schema = z.object({
+    userId: z.string().min(1).max(100),
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+    accuracy: z.number().positive().optional()
+  });
+  const v = schema.safeParse(req.body);
+  if (!v.success) return res.status(400).json(v.error.flatten());
+  const { userId, lat, lon, accuracy } = v.data;
+
+  const sql = `
+    INSERT INTO user_locations (user_id, geog, accuracy_meters)
+    VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4)
+    RETURNING id
+  `;
+  try {
+    const r = await query(sql, [userId, lon, lat, accuracy ?? null]);
+    res.status(201).json({ id: r.rows[0].id });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 // ============================================================================
 // DEVICE REGISTRATION ENDPOINTS FOR PUSH NOTIFICATIONS
 // ============================================================================
@@ -460,6 +484,7 @@ app.post('/devices/cleanup', requireAppKey, async (req, res) => {
   } catch (e: any) {
     console.error('Failed to cleanup expired registrations:', e.message);
     res.status(500).json({ error: 'cleanup failed' });
+
   }
 });
 
