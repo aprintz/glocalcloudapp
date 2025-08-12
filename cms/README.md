@@ -1,3 +1,51 @@
+# Strapi Application with Custom Plugins
+
+A [Strapi](https://strapi.io) application with custom plugins for geolocation, push notifications, and geofencing.
+
+## Plugins
+
+This application includes three custom plugins:
+
+### Push Plugin
+- Device registration and token management
+- Message delivery to individual devices and users
+- Hub-based broadcasting
+- Token encryption and hashing
+- Feature specs: PUSH-REG-001, PUSH-HASH-001, PUSH-ENC-001, PUSH-SEND-001, PUSH-HUB-001
+
+### Geolocation Plugin  
+- Location data ingestion with idempotency
+- Data pruning and retention management
+- Hub creation and membership
+- Location querying and validation
+- Feature specs: GEO-ING-001, GEO-PRU-001, GEO-HUB-001, GEO-VAL-001
+
+### Geofence Plugin
+- Zone creation and management
+- Real-time boundary checking
+- Notification processing with suppression
+- Batch operations and cron tasks
+- Feature specs: GEO-ZONE-001, GEO-CHECK-001, GEO-NOTIF-001, GEO-BATCH-001, GEO-CRON-001
+
+## Testing
+
+Comprehensive test suite using Jest and fast-check for property-based testing.
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run in watch mode  
+npm run test:watch
+```
+
+See `__tests__/README.md` for detailed testing documentation and feature specification mappings.
+
+---
+
 # 🚀 Getting started with Strapi
 
 Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/dev-docs/cli) (CLI) which lets you scaffold and manage your project in seconds.
