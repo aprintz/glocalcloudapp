@@ -13,12 +13,7 @@
       "bundleIdentifier": "com.aprintz.glocalcloudapp"
     },
     "android": {
-      "package": "com.aprintz.glocalcloudapp",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyB8F_GY3KFU4shTfaeSKlg-xbDw42X9NuU"
-        }
-      }
+      "package": "com.aprintz.glocalcloudapp"
     },
     "web": {
       "bundler": "metro",
