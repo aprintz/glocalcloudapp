@@ -5,6 +5,28 @@ Monorepo with:
 - Node/Express API with PostGIS
 - Strapi CMS (Postgres)
 
+## Privacy & Data Retention
+
+**NEW**: This application now includes comprehensive privacy and data retention features:
+
+- **Automatic Location Purge**: User location data is automatically purged after 30 days
+- **GDPR Compliance**: Complete user data deletion endpoints
+- **Audit Logging**: All privacy operations are logged for compliance
+- **Scheduled Jobs**: Nightly background jobs for data maintenance
+
+See [docs/privacy.md](docs/privacy.md) for complete privacy policy and technical details.
+
+### Privacy API Endpoints
+
+- `POST /user-locations` - Create user location record
+- `GET /user-locations` - Retrieve user location data  
+- `DELETE /privacy/user-data/:userId` - Delete all user data (GDPR)
+- `POST /privacy/purge-locations` - Manual location purge (admin)
+- `GET /privacy/audit-log` - Privacy audit trail
+- `POST /privacy/trigger-purge` - Trigger purge job manually
+
+All privacy endpoints require API key authentication.
+
 ## Run everything locally
 
 1) Database
