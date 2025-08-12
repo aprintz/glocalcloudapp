@@ -1,0 +1,34 @@
+{
+  "name": "strapi-plugin-geofences",
+  "version": "1.0.0",
+  "description": "Geofences management plugin for Strapi",
+  "main": "./dist/server/index.js",
+  "types": "./dist/server/index.d.ts",
+  "keywords": [
+    "strapi",
+    "plugin",
+    "geofences",
+    "geolocation"
+  ],
+  "strapi": {
+    "name": "geofences",
+    "description": "Manage geofences and location-based notifications",
+    "kind": "plugin",
+    "displayName": "Geofences"
+  },
+  "dependencies": {
+    "@strapi/design-system": "^2.0.0",
+    "@strapi/helper-plugin": "^5.0.0",
+    "@strapi/icons": "^2.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
+  }
+}

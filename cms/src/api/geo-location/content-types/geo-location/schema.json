@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "geo_locations",
+  "info": {
+    "singularName": "geo-location",
+    "pluralName": "geo-locations",
+    "displayName": "Geo Location",
+    "description": "Store user location data with geolocation information"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "indexes": [
+      { 
+        "name": "idx_user_recorded_at", 
+        "type": "index", 
+        "columns": ["user_id", "recorded_at"] 
+      },
+      { 
+        "name": "idx_recorded_at", 
+        "type": "index", 
+        "columns": ["recorded_at"] 
+      }
+    ]
+  },
+  "attributes": {
+    "user_id": {
+      "type": "string",
+      "required": true
+    },
+    "latitude": {
+      "type": "decimal",
+      "required": true
+    },
+    "longitude": {
+      "type": "decimal", 
+      "required": true
+    },
+    "accuracy": {
+      "type": "decimal",
+      "required": false
+    },
+    "speed": {
+      "type": "decimal",
+      "required": false
+    },
+    "recorded_at": {
+      "type": "datetime",
+      "required": true
+    }
+  }
+}

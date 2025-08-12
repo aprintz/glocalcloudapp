@@ -5,6 +5,8 @@ Monorepo with:
 - Node/Express API with PostGIS
 - Strapi CMS (Postgres)
 
+> **Architecture Note**: We are consolidating the Express API into Strapi as custom plugins. See [ADR-0001](docs/adr/ADR-0001-consolidate-cms-api.md) for details on this architectural decision.
+
 ## Run everything locally
 
 1) Database
@@ -40,5 +42,11 @@ The Google Maps key is now injected via environment variable to avoid committing
 4. If rotating the key, update `.env` and rebuild (a simple re-run with dev client is fine if native code unchanged).
 
 The static key that was previously inside `app.json` has been removed; `app.config.ts` now loads it from `process.env.GOOGLE_MAPS_API_KEY`.
+
+## Development Resources
+
+- **Architecture Decisions**: See [ADR-0001](docs/adr/ADR-0001-consolidate-cms-api.md) for our consolidated Strapi architecture
+- **Copilot Instructions**: Development guidelines and patterns in [.github/COPILOT_INSTRUCTIONS.md](.github/COPILOT_INSTRUCTIONS.md)
+- **Prompt Library**: Common development prompts in [docs/copilot-prompts.md](docs/copilot-prompts.md)
 
 [Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/aprintz/glocalcloudapp)

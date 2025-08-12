@@ -373,6 +373,52 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiGeoLocationGeoLocation extends Struct.CollectionTypeSchema {
+  collectionName: 'geo_locations';
+  info: {
+    description: 'Store user location data with geolocation information';
+    displayName: 'Geo Location';
+    pluralName: 'geo-locations';
+    singularName: 'geo-location';
+  };
+  options: {
+    draftAndPublish: false;
+    indexes: [
+      {
+        columns: ['user_id', 'recorded_at'];
+        name: 'idx_user_recorded_at';
+        type: 'index';
+      },
+      {
+        columns: ['recorded_at'];
+        name: 'idx_recorded_at';
+        type: 'index';
+      },
+    ];
+  };
+  attributes: {
+    accuracy: Schema.Attribute.Decimal;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    latitude: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::geo-location.geo-location'
+    > &
+      Schema.Attribute.Private;
+    longitude: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    recorded_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    speed: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user_id: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
 export interface ApiPagePage extends Struct.CollectionTypeSchema {
   collectionName: 'pages';
   info: {
@@ -918,6 +964,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::geo-location.geo-location': ApiGeoLocationGeoLocation;
       'api::page.page': ApiPagePage;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

@@ -1,6 +1,14 @@
 # Server (PostgreSQL + PostGIS + Express)
 
-This folder contains a minimal TypeScript API server and SQL schema for geospatial queries (radius, polygon, nearest).
+This folder contains a minimal TypeScript API server and SQL schema for geospatial queries (radius, polygon, nearest) with **secure push token encryption** for device registration and push notifications.
+
+## Features
+
+- **PostGIS/PostgreSQL**: Geographic event storage with spatial queries
+- **🔐 Push Token Encryption**: AES-256-GCM encrypted storage for device push tokens
+- **Device Registration**: Secure device management for push notifications
+- **Strapi CMS Integration**: Content management system proxy
+- **RESTful API**: Complete CRUD operations for events and devices
 
 ## Local quickstart
 
@@ -11,7 +19,7 @@ cd server
 docker compose up -d
 ```
 
-This loads the `001_init.sql` migration automatically and enables PostGIS.
+This loads the migrations automatically and enables PostGIS.
 
 2. Install and run the server:
 
@@ -20,16 +28,36 @@ npm --prefix server install
 npm --prefix server run dev
 ```
 
-The server expects `DATABASE_URL`. For Docker defaults, create `server/.env`:
+The server expects environment variables. For Docker defaults, create `server/.env`:
 
-```
+```bash
+# Database
 DATABASE_URL=postgres://user:password@localhost:5432/glocal
 PORT=4000
 DATABASE_SSL=disable
+
+# API Security
+APP_API_KEY=replace-with-a-strong-shared-secret
+
+# Push Token Encryption (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+PUSH_TOKEN_ENCRYPTION_KEY=your-base64-encoded-256-bit-encryption-key-here
+
+# CMS (optional)
+STRAPI_BASE_URL=http://localhost:1337
+CMS_CACHE_TTL_MS=15000
 ```
 
-3. Try endpoints:
+3. Run database migrations:
 
+```bash
+npm --prefix server run migrate
+```
+
+This creates the `events` table and `device_registrations` table with encrypted token storage.
+
+## API Endpoints
+
+### Events (Geographic Data)
 - Health: `GET http://localhost:4000/health`
 - Create event: `POST http://localhost:4000/events` with JSON:
   `{ "title": "Ping", "lon": 12.5683, "lat": 55.6761, "payload": {"tag":"demo"} }`
@@ -42,7 +70,59 @@ DATABASE_SSL=disable
 - Delete: `DELETE /events/:id`
 - Bulk insert: `POST /events/bulk` with an array of items `{ title, lon, lat, payload? }`
 - List recent: `GET /events?limit=100&sinceHours=24`
-- Optional payload filter for most queries: pass `payload={"tag":"demo"}` (URL-encoded)
+
+### 🔐 Device Registration (Requires `x-app-key` header)
+- **Register device**: `POST /devices/register` with:
+  ```json
+  {
+    "deviceId": "unique-device-id",
+    "platform": "ios|android|web", 
+    "pushToken": "actual-push-token-from-fcm-or-apns",
+    "userId": "optional-user-id",
+    "latitude": 37.7749,
+    "longitude": -122.4194
+  }
+  ```
+- **Get device**: `GET /devices/:deviceId`
+- **Update device**: `PATCH /devices/:deviceId`
+- **List user devices**: `GET /users/:userId/devices`
+- **Deactivate device**: `DELETE /devices/:deviceId`
+- **Cleanup expired**: `POST /devices/cleanup`
+
+### CMS Integration (Requires `x-app-key` header)
+- `GET /cms/pages` — list latest published pages
+
+## 🔐 Push Token Security
+
+The server implements **AES-256-GCM encryption** for all stored push tokens:
+
+- **Encryption**: Each token encrypted with unique IV and authentication tag
+- **Access Control**: Tokens never exposed in API responses
+- **Key Management**: Supports Azure Key Vault integration
+- **Authentication**: GCM mode prevents tampering
+- **Migration**: New table `device_registrations` with encrypted storage
+
+**Security Features:**
+- Raw tokens are encrypted before database storage
+- API responses never include encrypted token components
+- Safe database view prevents accidental exposure
+- Startup validation ensures encryption is working
+- Geographic targeting support for location-based notifications
+
+See [Push Token Documentation](docs/push-token-encryption.md) for detailed usage and integration examples.
+
+## Testing
+
+```bash
+# Test encryption functionality
+npm run test:encryption
+
+# Test API endpoints (requires running server)
+npm run test:api
+
+# Build for production  
+npm run build
+```
 
 ## Azure setup (PostgreSQL Flexible Server)
 

@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NotificationZone, UserLocation, NotificationHistory } from '@/types/notification';
+import { validateLocation } from './api';
 
 // Web-compatible notification fallback
 const showWebNotification = (title: string, body: string) => {
@@ -25,6 +26,11 @@ class LocationServiceClass {
   private watchId: Location.LocationSubscription | null = null;
   private currentLocation: Location.LocationObject | null = null;
   private isTracking = false;
+  private userId: string = 'default-user'; // Should be set from auth system
+
+  setUserId(userId: string) {
+    this.userId = userId;
+  }
 
   async startLocationTracking() {
     if (this.isTracking) return;
@@ -48,7 +54,7 @@ class LocationServiceClass {
         },
         (location) => {
           this.currentLocation = location;
-          this.checkNotificationZones(location);
+          this.checkGeofencesBackend(location);
           this.updateUserLocation(location);
         }
       );
@@ -65,6 +71,40 @@ class LocationServiceClass {
       this.watchId = null;
     }
     this.isTracking = false;
+  }
+
+  private async checkGeofencesBackend(location: Location.LocationObject) {
+    try {
+      // Use the new backend API for geofence validation
+      const result = await validateLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        user_id: this.userId,
+        tenant: 'public' // Could be dynamic based on user context
+      });
+
+      // Handle geofence hits returned from backend
+      if (result.data && result.data.length > 0) {
+        for (const hit of result.data) {
+          console.log(`Geofence ${hit.event_type}: ${hit.geofence}`, {
+            suppressed: hit.suppressed,
+            hit_id: hit.hit_id
+          });
+          
+          // Show client-side notification for immediate feedback
+          if (!hit.suppressed) {
+            showWebNotification(
+              `Geofence ${hit.event_type}`,
+              `You have ${hit.event_type}ed ${hit.geofence}`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error validating location with backend:', error);
+      // Fallback to local validation if backend is unavailable
+      await this.checkNotificationZones(location);
+    }
   }
 
   private async checkNotificationZones(location: Location.LocationObject) {
