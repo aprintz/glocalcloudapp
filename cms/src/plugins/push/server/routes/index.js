@@ -4,9 +4,7 @@ module.exports = [
     path: '/devices',
     handler: 'push.registerDevice',
     config: {
-      policies: [],
-      middlewares: [],
-      auth: false, // Allow unauthenticated requests for device registration
+      auth: false,
     },
   },
   {
@@ -14,9 +12,7 @@ module.exports = [
     path: '/devices/:deviceId',
     handler: 'push.getDevice',
     config: {
-      policies: [],
-      middlewares: [],
-      auth: false, // Allow unauthenticated requests for device info retrieval
+      auth: false,
     },
   },
 ];
