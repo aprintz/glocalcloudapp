@@ -13,6 +13,7 @@ import * as Location from 'expo-location';
 import { Plus, Save, X, MapPin } from 'lucide-react-native';
 import { LocationService } from '@/services/LocationService';
 import { NotificationZone } from '@/types/notification';
+import { GoogleMaps, AppleMaps } from 'expo-maps';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -130,8 +131,8 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Map Placeholder */}
-      <View style={styles.mapPlaceholder}>
+      {/* Map View */}
+      <View style={styles.mapContainer}>
         <View style={styles.mapHeader}>
           <Text style={styles.mapTitle}>Location Map</Text>
           <Text style={styles.coordinates}>
@@ -139,44 +140,86 @@ export default function MapScreen() {
           </Text>
         </View>
 
-        {/* Current Location */}
-        <View style={styles.locationCard}>
-          <View style={styles.locationMarker}>
-            <MapPin size={20} color="#3B82F6" />
-          </View>
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationTitle}>Your Location</Text>
-            <Text style={styles.locationSubtitle}>Current position</Text>
-          </View>
-        </View>
-
-        {/* Notification Zones */}
-        {zones.map((zone) => (
-          <TouchableOpacity
-            key={zone.id}
-            style={[
-              styles.zoneCard,
-              { backgroundColor: zone.isActive ? '#F0FDF4' : '#F9FAFB' }
+        {Platform.OS === 'android' ? (
+          <GoogleMaps.View
+            style={styles.map}
+            cameraPosition={{
+              coordinates: {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              },
+              zoom: 15,
+            }}
+            markers={[
+              {
+                id: 'current-location',
+                coordinates: {
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                },
+                title: 'Your Location',
+                snippet: 'Current position',
+              },
+              ...zones.map((zone) => ({
+                id: zone.id,
+                coordinates: {
+                  latitude: zone.latitude,
+                  longitude: zone.longitude,
+                },
+                title: zone.name,
+                snippet: zone.message,
+              })),
             ]}
-            onPress={() => toggleZone(zone.id)}
-          >
-            <View style={[
-              styles.zoneMarker,
-              { backgroundColor: zone.isActive ? '#10B981' : '#9CA3AF' }
-            ]}>
-              <MapPin size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.zoneInfo}>
-              <Text style={styles.zoneTitle}>{zone.name}</Text>
-              <Text style={styles.zoneSubtitle}>
-                Radius: {zone.radius}m • {zone.isActive ? 'Active' : 'Inactive'}
-              </Text>
-              <Text style={styles.zoneMessage}>{zone.message}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {Platform.OS === 'web' && (
+            properties={{
+              isMyLocationEnabled: true,
+              mapType: GoogleMaps.MapType.NORMAL,
+            }}
+            uiSettings={{
+              compassEnabled: true,
+              myLocationButtonEnabled: true,
+              zoomControlsEnabled: true,
+            }}
+          />
+        ) : Platform.OS === 'ios' ? (
+          <AppleMaps.View
+            style={styles.map}
+            cameraPosition={{
+              coordinates: {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              },
+              zoom: 15,
+            }}
+            annotations={[
+              {
+                id: 'current-location',
+                coordinates: {
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                },
+                title: 'Your Location',
+                text: 'Current position',
+              },
+              ...zones.map((zone) => ({
+                id: zone.id,
+                coordinates: {
+                  latitude: zone.latitude,
+                  longitude: zone.longitude,
+                },
+                title: zone.name,
+                text: zone.message,
+              })),
+            ]}
+            properties={{
+              isMyLocationEnabled: true,
+              mapType: AppleMaps.MapType.STANDARD,
+            }}
+            uiSettings={{
+              compassEnabled: true,
+              myLocationButtonEnabled: true,
+            }}
+          />
+        ) : (
           <View style={styles.webNotice}>
             <Text style={styles.webNoticeText}>
               📱 Native map functionality is available on mobile devices
@@ -274,9 +317,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  mapPlaceholder: {
+  mapContainer: {
     flex: 1,
     padding: 16,
+  },
+  map: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   mapHeader: {
     backgroundColor: '#FFFFFF',
@@ -299,79 +347,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  locationCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  locationMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EBF4FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  locationSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  zoneCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  zoneMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  zoneInfo: {
-    flex: 1,
-  },
-  zoneTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  zoneSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  zoneMessage: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 4,
   },
   webNotice: {
     backgroundColor: '#FEF3C7',
