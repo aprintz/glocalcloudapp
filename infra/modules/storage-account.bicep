@@ -90,6 +90,3 @@ output storageAccountName string = storageAccount.name
 
 @description('The primary endpoint of the Storage Account')
 output primaryEndpoint string = storageAccount.properties.primaryEndpoints.blob
-
-@description('The primary connection string')
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'

@@ -82,7 +82,7 @@ module containerApp 'modules/container-app.bicep' = {
     environmentName: containerAppEnvironment
     appName: '${resourceSuffix}-strapi'
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
-    databaseConnectionString: database.outputs.connectionString
+    databaseConnectionString: 'postgresql://${postgresAdminUsername}:${postgresAdminPassword}@${database.outputs.serverFqdn}:5432/strapi?sslmode=require'
     storageAccountName: storage.outputs.storageAccountName
     keyVaultName: keyVault.outputs.keyVaultName
   }
@@ -92,7 +92,7 @@ module containerApp 'modules/container-app.bicep' = {
 @description('PostgreSQL server FQDN')
 output postgresServerFqdn string = database.outputs.serverFqdn
 
-@description('PostgreSQL connection string')
+@description('PostgreSQL connection string (without password for security)')
 output postgresConnectionString string = database.outputs.connectionString
 
 @description('Container App URL')
@@ -110,7 +110,7 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 @description('Key Vault URI')
 output keyVaultUri string = keyVault.outputs.keyVaultUri
 
-@description('Notification Hub connection string')
+@description('Notification Hub connection info (connection string available in Azure Portal)')
 output notificationHubConnectionString string = notificationHub.outputs.connectionString
 
 @description('Log Analytics Workspace ID')

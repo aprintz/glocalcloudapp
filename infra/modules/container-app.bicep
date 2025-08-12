@@ -15,10 +15,10 @@ param logAnalyticsWorkspaceId string
 @secure()
 param databaseConnectionString string
 
-@description('Storage account name')
+@description('Storage account name for media uploads')
 param storageAccountName string
 
-@description('Key Vault name')
+@description('Key Vault name for additional secrets')
 param keyVaultName string
 
 @description('Container image for Strapi')
@@ -79,19 +79,19 @@ resource strapiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
         {
           name: 'app-keys'
-          value: 'defaultKey1,defaultKey2,defaultKey3,defaultKey4'
+          value: 'CHANGE-ME-1,CHANGE-ME-2,CHANGE-ME-3,CHANGE-ME-4'
         }
         {
           name: 'api-token-salt'
-          value: 'defaultSalt'
+          value: 'CHANGE-ME-API-TOKEN-SALT'
         }
         {
           name: 'admin-jwt-secret'
-          value: 'defaultAdminSecret'
+          value: 'CHANGE-ME-ADMIN-JWT-SECRET'
         }
         {
           name: 'jwt-secret'
-          value: 'defaultJwtSecret'
+          value: 'CHANGE-ME-JWT-SECRET'
         }
       ]
     }

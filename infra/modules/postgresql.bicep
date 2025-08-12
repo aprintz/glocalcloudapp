@@ -116,11 +116,11 @@ resource postgisConfiguration 'Microsoft.DBforPostgreSQL/flexibleServers/configu
 @description('The FQDN of the PostgreSQL server')
 output serverFqdn string = postgresqlServer.properties.fullyQualifiedDomainName
 
-@description('The connection string for the main database')
-output connectionString string = 'postgresql://${administratorLogin}:${administratorPassword}@${postgresqlServer.properties.fullyQualifiedDomainName}:5432/glocal?sslmode=require'
+@description('The connection string for the main database (without password for security)')
+output connectionString string = 'postgresql://${administratorLogin}@${postgresqlServer.properties.fullyQualifiedDomainName}:5432/glocal?sslmode=require'
 
-@description('The connection string for Strapi database')
-output strapiConnectionString string = 'postgresql://${administratorLogin}:${administratorPassword}@${postgresqlServer.properties.fullyQualifiedDomainName}:5432/strapi?sslmode=require'
+@description('The connection string for Strapi database (without password for security)')
+output strapiConnectionString string = 'postgresql://${administratorLogin}@${postgresqlServer.properties.fullyQualifiedDomainName}:5432/strapi?sslmode=require'
 
 @description('The resource ID of the PostgreSQL server')
 output serverId string = postgresqlServer.id

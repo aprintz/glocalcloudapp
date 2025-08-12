@@ -27,27 +27,9 @@ resource notificationHubNamespace 'Microsoft.NotificationHubs/namespaces@2023-09
 resource notificationHub 'Microsoft.NotificationHubs/namespaces/notificationHubs@2023-09-01' = {
   parent: notificationHubNamespace
   name: notificationHubName
+  location: location
   properties: {
-    authorizationRules: [
-      {
-        name: 'DefaultListenSharedAccessSignature'
-        properties: {
-          rights: [
-            'Listen'
-          ]
-        }
-      }
-      {
-        name: 'DefaultFullSharedAccessSignature'
-        properties: {
-          rights: [
-            'Listen'
-            'Manage'
-            'Send'
-          ]
-        }
-      }
-    ]
+    // Authorization rules are managed separately
   }
 }
 
@@ -85,8 +67,8 @@ output notificationHubName string = notificationHub.name
 @description('The namespace name')
 output namespaceName string = notificationHubNamespace.name
 
-@description('The connection string for sending notifications')
-output connectionString string = fullAuthRule.listKeys().primaryConnectionString
+@description('The connection string for sending notifications (retrieve from Azure Portal for security)')
+output connectionString string = '${notificationHubNamespace.name};${notificationHub.name}' // Placeholder - actual connection string should be retrieved securely
 
 @description('The endpoint for the Notification Hub')
 output endpoint string = 'https://${notificationHubNamespace.properties.serviceBusEndpoint}'

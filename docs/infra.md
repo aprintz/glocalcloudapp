@@ -97,31 +97,38 @@ az deployment group show \
 
 ### Environment Variables for Strapi
 
-After deployment, configure these environment variables in your Strapi application:
+After deployment, configure these environment variables in your Strapi application. **Important: The deployment uses placeholder values for secrets that must be changed before production use.**
 
 ```env
 NODE_ENV=production
 DATABASE_CLIENT=postgres
-DATABASE_URL=<postgresConnectionString from outputs>
+DATABASE_URL=<postgresConnectionString from outputs + password>
 DATABASE_SSL=true
 DATABASE_SSL_REJECT_UNAUTHORIZED=false
 DATABASE_SCHEMA=public
-APP_KEYS=<generate-4-comma-separated-keys>
-API_TOKEN_SALT=<generate-random-string>
-ADMIN_JWT_SECRET=<generate-random-string>
-JWT_SECRET=<generate-random-string>
+APP_KEYS=<generate-4-comma-separated-keys>  # Replace CHANGE-ME values
+API_TOKEN_SALT=<generate-random-string>     # Replace CHANGE-ME values
+ADMIN_JWT_SECRET=<generate-random-string>   # Replace CHANGE-ME values
+JWT_SECRET=<generate-random-string>         # Replace CHANGE-ME values
 HOST=0.0.0.0
 PORT=1337
 ```
 
+**To update secrets after deployment:**
+1. Go to Azure Portal > Container Apps > Your Strapi app > Secrets
+2. Update all secrets that contain "CHANGE-ME" with secure values
+3. Restart the Container App to apply changes
+
 ### Environment Variables for Node.js Server
 
 ```env
-DATABASE_URL=<postgresConnectionString from outputs>
+DATABASE_URL=<postgresConnectionString from outputs + password>
 DATABASE_SSL=require
 STRAPI_BASE_URL=<strapiUrl from outputs>
 APP_API_KEY=<store-in-key-vault>
 ```
+
+**Note:** Connection strings from outputs exclude passwords for security. Construct the full connection string by adding your password.
 
 ### Environment Variables for Mobile App
 
@@ -148,10 +155,62 @@ SELECT PostGIS_Version();
 
 ## Security Considerations
 
-1. **Database Access**: Firewall rules are configured to allow all IPs for development. Restrict this in production.
-2. **Key Vault**: Store all sensitive configuration in Key Vault and reference from applications.
-3. **Container App**: Uses HTTPS by default with managed certificates.
-4. **Storage Account**: Configured with CORS for web access. Review and restrict as needed.
+### 🔒 Important Security Steps After Deployment
+
+1. **Update Default Secrets**: The deployment uses placeholder values for sensitive data. Update these immediately:
+   - Container App secrets (APP_KEYS, API_TOKEN_SALT, ADMIN_JWT_SECRET, JWT_SECRET)
+   - PostgreSQL admin password (if using default)
+
+2. **Database Access**: Firewall rules are configured to allow all IPs for development. Restrict this in production:
+   ```bash
+   # Remove the "AllowAllIPs" firewall rule
+   az postgres flexible-server firewall-rule delete \
+     --resource-group "rg-glocalcloud-prod" \
+     --name "glocalcloud-prod-psql" \
+     --rule-name "AllowAllIPs"
+   
+   # Add specific IP ranges for your applications
+   az postgres flexible-server firewall-rule create \
+     --resource-group "rg-glocalcloud-prod" \
+     --name "glocalcloud-prod-psql" \
+     --rule-name "ProductionIPs" \
+     --start-ip-address "YOUR_START_IP" \
+     --end-ip-address "YOUR_END_IP"
+   ```
+
+3. **Key Vault**: Store all sensitive configuration in Key Vault:
+   - Database passwords
+   - API keys
+   - JWT secrets
+   - Storage account keys
+
+4. **Container App**: 
+   - Uses HTTPS by default with managed certificates
+   - Secrets are stored securely within the Container App environment
+   - Consider using Key Vault references for secrets in production
+
+5. **Storage Account**: 
+   - Configured with CORS for web access
+   - Review and restrict CORS settings for production
+   - Consider using private endpoints for enhanced security
+
+### 🔐 Retrieving Sensitive Values
+
+Some outputs are excluded for security. Retrieve them using Azure CLI:
+
+```bash
+# Get storage account connection string
+az storage account show-connection-string \
+  --name "glocalclouddevst" \
+  --resource-group "rg-glocalcloud-dev"
+
+# Get Notification Hub connection string
+az notification-hub authorization-rule list-keys \
+  --resource-group "rg-glocalcloud-dev" \
+  --namespace-name "glocalcloud-nh-dev" \
+  --notification-hub-name "glocalcloud-hub-dev" \
+  --name "FullAccessRule"
+```
 
 ## Monitoring and Logging
 
