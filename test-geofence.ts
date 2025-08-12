@@ -2,9 +2,13 @@
 /**
  * Test script for geofence catch-up evaluation
  */
-import 'dotenv/config';
-import { GeofenceEvaluationService } from '../server/src/geofence-service.js';
-import { pool, query } from '../server/src/db.js';
+import { GeofenceEvaluationService } from './server/src/geofence-service.js';
+import { pool, query } from './server/src/db.js';
+
+// Set minimal environment for testing
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/test';
+process.env.GEOFENCE_BATCH_SIZE = '10';
+process.env.GEOFENCE_LOOKBACK_MINUTES = '60';
 
 async function runTest() {
   console.log('🧪 Testing Geofence Catch-up Evaluation');
