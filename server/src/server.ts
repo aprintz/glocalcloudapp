@@ -4,16 +4,40 @@ import { z } from 'zod';
 import { pool, ping, query } from './db.js';
 import { strapiGet } from './cms.js';
 import { TTLCache } from './cache.js';
+import { 
+  requestLoggingMiddleware, 
+  errorHandlingMiddleware, 
+  asyncErrorHandler,
+  createMetricsEndpoint,
+  createHealthCheckEndpoint,
+  metrics,
+  tracing,
+  logger
+} from './observability/index.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Add observability middleware
+app.use(requestLoggingMiddleware);
+
+// Observability endpoints
+app.get('/metrics', createMetricsEndpoint());
+app.get('/health/detailed', createHealthCheckEndpoint());
+
 app.get('/health', async (_req, res) => {
   try {
-  const ok = await ping();
-  res.json({ ok });
+    const timer = metrics.dbQueryDuration.record.bind(metrics.dbQueryDuration);
+    const startTime = Date.now();
+    const ok = await ping();
+    timer(Date.now() - startTime, { operation: 'ping' });
+    
+    metrics.requestCount.increment(1, { endpoint: 'health', status: 'success' });
+    res.json({ ok });
   } catch (e: any) {
+    metrics.requestErrors.increment(1, { endpoint: 'health', error: e.name });
+    logger.error('Health check failed', { error: e.message, stack: e.stack });
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -31,42 +55,88 @@ function requireAppKey(req: express.Request, res: express.Response, next: expres
   return res.status(401).json({ error: 'unauthorized' });
 }
 
-app.get('/cms/pages', requireAppKey, async (req, res) => {
-  const cacheKey = `pages:list:all`;
-  const cached = cmsCache.get(cacheKey);
-  if (cached) return res.json(cached);
-  try {
-    const data = await strapiGet<any>('/api/pages', {
-      'pagination[pageSize]': 50,
-      'sort[0]': 'updatedAt:desc',
-      'publicationState': 'live'
-    });
-    cmsCache.set(cacheKey, data);
-    res.json(data);
-  } catch (e: any) {
-    res.status(502).json({ error: e.message });
-  }
-});
+app.get('/cms/pages', requireAppKey, asyncErrorHandler(async (req, res) => {
+  return tracing.traceCmsOperation('list_pages', '/api/pages', async () => {
+    const cacheKey = `pages:list:all`;
+    const cached = cmsCache.get(cacheKey);
+    
+    if (cached) {
+      metrics.cmsCacheHits.increment(1, { operation: 'list_pages' });
+      logger.info('CMS cache hit', { cacheKey, operation: 'list_pages' });
+      return res.json(cached);
+    }
+    
+    metrics.cmsCacheMisses.increment(1, { operation: 'list_pages' });
+    const timer = metrics.cmsRequestDuration.record.bind(metrics.cmsRequestDuration);
+    const startTime = Date.now();
+    
+    try {
+      const data = await strapiGet<any>('/api/pages', {
+        'pagination[pageSize]': 50,
+        'sort[0]': 'updatedAt:desc',
+        'publicationState': 'live'
+      });
+      
+      timer(Date.now() - startTime, { operation: 'list_pages', status: 'success' });
+      metrics.cmsRequestCount.increment(1, { operation: 'list_pages', status: 'success' });
+      
+      cmsCache.set(cacheKey, data);
+      logger.info('CMS pages listed successfully', { 
+        pageCount: data?.data?.length || 0,
+        operation: 'list_pages' 
+      });
+      
+      res.json(data);
+    } catch (e: any) {
+      timer(Date.now() - startTime, { operation: 'list_pages', status: 'error' });
+      metrics.cmsRequestCount.increment(1, { operation: 'list_pages', status: 'error' });
+      throw e;
+    }
+  });
+}));
 
 // CMS proxy: get page by slug within tenant
-app.get('/cms/pages/:slug', requireAppKey, async (req, res) => {
+app.get('/cms/pages/:slug', requireAppKey, asyncErrorHandler(async (req, res) => {
   const slug = req.params.slug;
-  const cacheKey = `pages:slug:${slug}`;
-  const cached = cmsCache.get(cacheKey);
-  if (cached) return res.json(cached);
-  try {
-    const data = await strapiGet<any>('/api/pages', {
-      'filters[slug][$eq]': slug,
-      'publicationState': 'live'
-    });
-    const item = data?.data?.[0] ?? null;
-    if (!item) return res.status(404).json({ error: 'not found' });
-    cmsCache.set(cacheKey, item);
-    res.json(item);
-  } catch (e: any) {
-    res.status(502).json({ error: e.message });
-  }
-});
+  return tracing.traceCmsOperation('get_page_by_slug', `/api/pages/${slug}`, async () => {
+    const cacheKey = `pages:slug:${slug}`;
+    const cached = cmsCache.get(cacheKey);
+    
+    if (cached) {
+      metrics.cmsCacheHits.increment(1, { operation: 'get_page_by_slug' });
+      logger.info('CMS cache hit', { cacheKey, slug, operation: 'get_page_by_slug' });
+      return res.json(cached);
+    }
+    
+    metrics.cmsCacheMisses.increment(1, { operation: 'get_page_by_slug' });
+    const timer = metrics.cmsRequestDuration.record.bind(metrics.cmsRequestDuration);
+    const startTime = Date.now();
+    
+    try {
+      const data = await strapiGet<any>('/api/pages', {
+        'filters[slug][$eq]': slug,
+        'publicationState': 'live'
+      });
+      
+      timer(Date.now() - startTime, { operation: 'get_page_by_slug', status: 'success' });
+      metrics.cmsRequestCount.increment(1, { operation: 'get_page_by_slug', status: 'success' });
+      
+      const item = data?.data?.[0] ?? null;
+      if (!item) {
+        logger.warn('CMS page not found', { slug, operation: 'get_page_by_slug' });
+        return res.status(404).json({ error: 'not found' });
+      }
+      
+      cmsCache.set(cacheKey, item);
+      logger.info('CMS page retrieved successfully', { slug, pageId: item.id, operation: 'get_page_by_slug' });
+      res.json(item);
+    } catch (e: any) {
+      timer(Date.now() - startTime, { operation: 'get_page_by_slug', status: 'error' });
+      metrics.cmsRequestCount.increment(1, { operation: 'get_page_by_slug', status: 'error' });
+      throw e;
+    }
+  });
+}));
 
 // Disambiguated fetch when slugs can repeat per-tenant
 app.get('/cms/pages/:tenant/:slug', requireAppKey, async (req, res) => {
@@ -119,33 +189,74 @@ app.get('/events', async (req, res) => {
 });
 
 // Radius search: /events/radius?lat=..&lon=..&meters=3000
-app.get('/events/radius', async (req, res) => {
-  const q = z
-    .object({
-      lat: z.coerce.number().min(-90).max(90),
-      lon: z.coerce.number().min(-180).max(180),
-      meters: z.coerce.number().positive().max(100000),
-      payload: z.string().optional()
-    })
-    .safeParse(req.query);
-  if (!q.success) return res.status(400).json(q.error.flatten());
-  const { lat, lon, meters, payload } = q.data;
+app.get('/events/radius', asyncErrorHandler(async (req, res) => {
+  return tracing.traceGeoQuery('radius_search', async () => {
+    const q = z
+      .object({
+        lat: z.coerce.number().min(-90).max(90),
+        lon: z.coerce.number().min(-180).max(180),
+        meters: z.coerce.number().positive().max(100000),
+        payload: z.string().optional()
+      })
+      .safeParse(req.query);
+      
+    if (!q.success) {
+      logger.warn('Radius search validation failed', { 
+        errors: q.error.flatten(),
+        query: req.query 
+      });
+      return res.status(400).json(q.error.flatten());
+    }
+    
+    const { lat, lon, meters, payload } = q.data;
 
-  const wherePayload = payload ? ' AND payload @> $4::jsonb' : '';
-  const sql = `
-    SELECT id, title, payload, created_at,
-           ST_Distance(geog, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS meters
-    FROM events
-    WHERE ST_DWithin(geog, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
-    ${wherePayload}
-    ORDER BY meters ASC
-    LIMIT 200
-  `;
-  const params: any[] = [lon, lat, meters];
-  if (payload) params.push(payload);
-  const r = await pool.query(sql, params);
-  res.json(r.rows);
-});
+    const wherePayload = payload ? ' AND payload @> $4::jsonb' : '';
+    const sql = `
+      SELECT id, title, payload, created_at,
+             ST_Distance(geog, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) AS meters
+      FROM events
+      WHERE ST_DWithin(geog, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
+      ${wherePayload}
+      ORDER BY meters ASC
+      LIMIT 200
+    `;
+    
+    const params: any[] = [lon, lat, meters];
+    if (payload) params.push(payload);
+    
+    const timer = metrics.geoQueryDuration.record.bind(metrics.geoQueryDuration);
+    const startTime = Date.now();
+    
+    try {
+      const r = await tracing.traceDbQuery(
+        sql,
+        () => pool.query(sql, params)
+      );
+      
+      timer(Date.now() - startTime, { query_type: 'radius', status: 'success' });
+      metrics.geoQueryCount.increment(1, { query_type: 'radius', status: 'success' });
+      metrics.geoQueryResultCount.record(r.rows.length, { query_type: 'radius' });
+      
+      logger.info('Radius search completed', {
+        center: { lat, lon },
+        radius: meters,
+        resultCount: r.rows.length,
+        hasPayloadFilter: !!payload
+      });
+      
+      res.json(r.rows);
+    } catch (e: any) {
+      timer(Date.now() - startTime, { query_type: 'radius', status: 'error' });
+      metrics.geoQueryCount.increment(1, { query_type: 'radius', status: 'error' });
+      logger.error('Radius search failed', {
+        center: { lat, lon },
+        radius: meters,
+        error: e.message
+      });
+      throw e;
+    }
+  });
+}));
 
 // Nearest N: /events/nearest?lat=..&lon=..&limit=20
 app.get('/events/nearest', async (req, res) => {
@@ -199,31 +310,67 @@ app.post('/events/polygon', async (req, res) => {
 });
 
 // Create event: POST /events { id?, title, payload, lon, lat }
-app.post('/events', async (req, res) => {
-  const schema = z.object({
-    id: z.string().uuid().optional(),
-    title: z.string().min(1).max(200),
-    payload: z.any().optional(),
-    lon: z.number().min(-180).max(180),
-    lat: z.number().min(-90).max(90)
+app.post('/events', asyncErrorHandler(async (req, res) => {
+  return tracing.traceEventIngest('create_event', async () => {
+    const schema = z.object({
+      id: z.string().uuid().optional(),
+      title: z.string().min(1).max(200),
+      payload: z.any().optional(),
+      lon: z.number().min(-180).max(180),
+      lat: z.number().min(-90).max(90)
+    });
+    
+    const v = schema.safeParse(req.body);
+    if (!v.success) {
+      logger.warn('Event ingestion validation failed', { 
+        errors: v.error.flatten(),
+        body: req.body 
+      });
+      return res.status(400).json(v.error.flatten());
+    }
+    
+    const { id, title, payload, lon, lat } = v.data;
+    
+    const sql = `
+      INSERT INTO events (id, title, payload, geog)
+      VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3::jsonb,
+        ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography)
+      RETURNING id
+    `;
+    
+    const timer = metrics.eventIngestDuration.record.bind(metrics.eventIngestDuration);
+    const startTime = Date.now();
+    
+    try {
+      const r = await tracing.traceDbQuery(
+        sql,
+        () => pool.query(sql, [id ?? null, title, JSON.stringify(payload ?? {}), lon, lat])
+      );
+      
+      timer(Date.now() - startTime, { status: 'success' });
+      metrics.eventIngestCount.increment(1, { status: 'success', event_type: title });
+      
+      logger.info('Event ingested successfully', {
+        eventId: r.rows[0].id,
+        title,
+        hasPayload: !!payload,
+        coordinates: { lon, lat }
+      });
+      
+      res.status(201).json({ id: r.rows[0].id });
+    } catch (e: any) {
+      timer(Date.now() - startTime, { status: 'error' });
+      metrics.eventIngestErrors.increment(1, { error: e.name });
+      logger.error('Event ingestion failed', { 
+        error: e.message,
+        title,
+        coordinates: { lon, lat },
+        stack: e.stack
+      });
+      throw e;
+    }
   });
-  const v = schema.safeParse(req.body);
-  if (!v.success) return res.status(400).json(v.error.flatten());
-  const { id, title, payload, lon, lat } = v.data;
-
-  const sql = `
-    INSERT INTO events (id, title, payload, geog)
-    VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3::jsonb,
-      ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography)
-    RETURNING id
-  `;
-  try {
-    const r = await pool.query(sql, [id ?? null, title, JSON.stringify(payload ?? {}), lon, lat]);
-    res.status(201).json({ id: r.rows[0].id });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // Bounding box: /events/bbox?w=-122.52&s=37.70&e=-122.35&n=37.83
 app.get('/events/bbox', async (req, res) => {
@@ -335,16 +482,23 @@ app.post('/events/bulk', async (req, res) => {
 });
 
 const port = Number(process.env.PORT || 4000);
+
+// Add error handling middleware at the end
+app.use(errorHandlingMiddleware);
+
 app.listen(port, () => {
+  logger.info('Server started', { port, environment: process.env.NODE_ENV || 'development' });
   console.log(`server listening on :${port}`);
 });
 
 process.on('SIGINT', async () => {
+  logger.info('Received SIGINT, shutting down gracefully');
   console.log('Shutting down...');
   try { await pool.end(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', async () => {
+  logger.info('Received SIGTERM, shutting down gracefully');
   console.log('Shutting down...');
   try { await pool.end(); } catch {}
   process.exit(0);
