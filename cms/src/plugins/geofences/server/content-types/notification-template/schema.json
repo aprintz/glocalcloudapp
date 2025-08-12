@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notification_templates",
+  "info": {
+    "singularName": "notification-template",
+    "pluralName": "notification-templates",
+    "displayName": "Notification Template",
+    "description": "Templates for geofence-triggered notifications"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "indexes": [
+      { "name": "template_tenant_name", "type": "index", "columns": ["tenant", "name"] }
+    ]
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "content-type-builder": {
+      "visible": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "tenant": {
+      "type": "string",
+      "required": false,
+      "default": "public",
+      "maxLength": 100
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 500
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "notification_type": {
+      "type": "enumeration",
+      "enum": ["push", "email", "sms", "webhook"],
+      "required": true,
+      "default": "push"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["low", "normal", "high", "urgent"],
+      "required": true,
+      "default": "normal"
+    },
+    "webhook_url": {
+      "type": "string",
+      "required": false
+    },
+    "email_template": {
+      "type": "richtext",
+      "required": false
+    },
+    "sms_template": {
+      "type": "text",
+      "required": false
+    },
+    "custom_data": {
+      "type": "json"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "geofences": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::geofences.geofence",
+      "mappedBy": "notification_template"
+    }
+  }
+}
