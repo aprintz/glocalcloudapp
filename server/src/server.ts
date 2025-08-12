@@ -4,6 +4,14 @@ import { z } from 'zod';
 import { pool, ping, query } from './db.js';
 import { strapiGet } from './cms.js';
 import { TTLCache } from './cache.js';
+import { 
+  createUserLocation, 
+  getUserLocations, 
+  deleteUserData, 
+  getPrivacyAuditLog,
+  purgeOldUserLocations 
+} from './privacy.js';
+import { scheduledJobs } from './scheduler.js';
 
 const app = express();
 app.use(cors());
@@ -334,18 +342,153 @@ app.post('/events/bulk', async (req, res) => {
   }
 });
 
+// === USER LOCATIONS ENDPOINTS ===
+
+// Create user location: POST /user-locations { userId, sessionId?, longitude, latitude, accuracy?, payload? }
+app.post('/user-locations', async (req, res) => {
+  const schema = z.object({
+    userId: z.string().uuid(),
+    sessionId: z.string().uuid().optional(),
+    longitude: z.number().min(-180).max(180),
+    latitude: z.number().min(-90).max(90),
+    accuracy: z.number().positive().optional(),
+    payload: z.any().optional()
+  });
+  
+  const validation = schema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json(validation.error.flatten());
+  }
+  
+  try {
+    const id = await createUserLocation(validation.data);
+    res.status(201).json({ id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user locations: GET /user-locations?userId=...&sessionId=...&sinceHours=...&limit=...
+app.get('/user-locations', async (req, res) => {
+  const query = z.object({
+    userId: z.string().uuid().optional(),
+    sessionId: z.string().uuid().optional(),
+    sinceHours: z.coerce.number().int().positive().max(24 * 365).optional(),
+    limit: z.coerce.number().int().positive().max(1000).default(100)
+  }).safeParse(req.query);
+  
+  if (!query.success) {
+    return res.status(400).json(query.error.flatten());
+  }
+  
+  try {
+    const locations = await getUserLocations(query.data);
+    res.json(locations);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// === PRIVACY & GDPR ENDPOINTS ===
+
+// Delete all user data (GDPR): DELETE /privacy/user-data/:userId
+app.delete('/privacy/user-data/:userId', requireAppKey, async (req, res) => {
+  const userId = req.params.userId;
+  if (!z.string().uuid().safeParse(userId).success) {
+    return res.status(400).json({ error: 'invalid user ID' });
+  }
+  
+  try {
+    const result = await deleteUserData(userId);
+    res.json({
+      deleted: {
+        userLocations: parseInt(result.user_locations_deleted),
+        events: parseInt(result.events_deleted)
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manual location purge (admin): POST /privacy/purge-locations
+app.post('/privacy/purge-locations', requireAppKey, async (req, res) => {
+  const schema = z.object({
+    retentionDays: z.number().int().positive().max(365).default(30)
+  });
+  
+  const validation = schema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json(validation.error.flatten());
+  }
+  
+  try {
+    const deletedCount = await purgeOldUserLocations(validation.data.retentionDays);
+    res.json({ deletedCount });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get privacy audit log: GET /privacy/audit-log?operation=...&userId=...&limit=...
+app.get('/privacy/audit-log', requireAppKey, async (req, res) => {
+  const query = z.object({
+    operation: z.string().optional(),
+    userId: z.string().uuid().optional(),
+    limit: z.coerce.number().int().positive().max(1000).default(100)
+  }).safeParse(req.query);
+  
+  if (!query.success) {
+    return res.status(400).json(query.error.flatten());
+  }
+  
+  try {
+    const logs = await getPrivacyAuditLog(
+      query.data.limit, 
+      query.data.operation, 
+      query.data.userId
+    );
+    res.json(logs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Trigger scheduled job manually (admin): POST /privacy/trigger-purge
+app.post('/privacy/trigger-purge', requireAppKey, async (req, res) => {
+  const schema = z.object({
+    retentionDays: z.number().int().positive().max(365).optional()
+  });
+  
+  const validation = schema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json(validation.error.flatten());
+  }
+  
+  try {
+    const deletedCount = await scheduledJobs.triggerLocationPurge(validation.data.retentionDays);
+    res.json({ deletedCount });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {
   console.log(`server listening on :${port}`);
+  // Start scheduled jobs
+  scheduledJobs.start();
 });
 
 process.on('SIGINT', async () => {
   console.log('Shutting down...');
+  scheduledJobs.stop();
   try { await pool.end(); } catch {}
   process.exit(0);
 });
 process.on('SIGTERM', async () => {
   console.log('Shutting down...');
+  scheduledJobs.stop();
   try { await pool.end(); } catch {}
   process.exit(0);
 });
