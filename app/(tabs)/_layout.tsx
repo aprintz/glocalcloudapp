@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MapPin, Bell, User, Settings } from 'lucide-react-native';
+import { MapPin, Bell, User, Settings, FileText } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -45,6 +45,15 @@ export default function TabLayout() {
           title: 'Users',
           tabBarIcon: ({ size, color }) => (
             <User size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="cms"
+        options={{
+          title: 'Content',
+          tabBarIcon: ({ size, color }) => (
+            <FileText size={size} color={color} />
           ),
         }}
       />
