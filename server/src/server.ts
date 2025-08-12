@@ -119,7 +119,9 @@ app.get('/events', async (req, res) => {
 });
 
 // Radius search: /events/radius?lat=..&lon=..&meters=3000
+// DEPRECATED: This endpoint will be removed in a future version. Use the Strapi geolocation plugin instead.
 app.get('/events/radius', async (req, res) => {
+  console.warn('[DEPRECATED] /events/radius endpoint is deprecated. Please use /api/geolocation/events/radius instead.');
   const q = z
     .object({
       lat: z.coerce.number().min(-90).max(90),
@@ -148,7 +150,9 @@ app.get('/events/radius', async (req, res) => {
 });
 
 // Nearest N: /events/nearest?lat=..&lon=..&limit=20
+// DEPRECATED: This endpoint will be removed in a future version. Use the Strapi geolocation plugin instead.
 app.get('/events/nearest', async (req, res) => {
+  console.warn('[DEPRECATED] /events/nearest endpoint is deprecated. Please use /api/geolocation/events/nearest instead.');
   const q = z
     .object({
       lat: z.coerce.number().min(-90).max(90),
@@ -177,7 +181,9 @@ app.get('/events/nearest', async (req, res) => {
 });
 
 // Polygon search: POST /events/polygon { polygon: GeoJSON Polygon }
+// DEPRECATED: This endpoint will be removed in a future version. Use the Strapi geolocation plugin instead.
 app.post('/events/polygon', async (req, res) => {
+  console.warn('[DEPRECATED] /events/polygon endpoint is deprecated. Please use /api/geolocation/events/polygon instead.');
   const schema = z.object({ polygon: z.any(), payload: z.string().optional() });
   const v = schema.safeParse(req.body);
   if (!v.success) return res.status(400).json(v.error.flatten());
@@ -226,7 +232,9 @@ app.post('/events', async (req, res) => {
 });
 
 // Bounding box: /events/bbox?w=-122.52&s=37.70&e=-122.35&n=37.83
+// DEPRECATED: This endpoint will be removed in a future version. Use the Strapi geolocation plugin instead.
 app.get('/events/bbox', async (req, res) => {
+  console.warn('[DEPRECATED] /events/bbox endpoint is deprecated. Please use /api/geolocation/events/bbox instead.');
   const q = z
     .object({
       w: z.coerce.number().min(-180).max(180),

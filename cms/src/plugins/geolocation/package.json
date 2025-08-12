@@ -1,0 +1,25 @@
+{
+  "name": "@strapi/plugin-geolocation",
+  "version": "0.1.0",
+  "description": "Geolocation plugin for Strapi with PostGIS integration",
+  "strapi": {
+    "name": "geolocation",
+    "description": "Geolocation services with PostGIS support",
+    "kind": "plugin",
+    "displayName": "Geolocation"
+  },
+  "dependencies": {},
+  "author": {
+    "name": "Strapi Solutions team"
+  },
+  "maintainers": [
+    {
+      "name": "Strapi Solutions team"
+    }
+  ],
+  "engines": {
+    "node": ">=18.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "MIT"
+}
