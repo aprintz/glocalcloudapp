@@ -4,10 +4,31 @@ import { z } from 'zod';
 import { pool, ping, query } from './db.js';
 import { strapiGet } from './cms.js';
 import { TTLCache } from './cache.js';
+import { validateEncryptionSetup } from './encryption.js';
+import { 
+  registerDevice, 
+  updateDevice, 
+  getDeviceRegistration, 
+  getUserDevices, 
+  deactivateDevice,
+  cleanupExpiredRegistrations,
+  DeviceRegistrationSchema,
+  DeviceUpdateSchema
+} from './deviceRegistrations.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Validate encryption setup on startup
+try {
+  validateEncryptionSetup();
+} catch (error) {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  console.error('Failed to validate encryption setup:', errorMessage);
+  console.error('Please ensure PUSH_TOKEN_ENCRYPTION_KEY is properly configured');
+  process.exit(1);
+}
 
 app.get('/health', async (_req, res) => {
   try {
@@ -331,6 +352,114 @@ app.post('/events/bulk', async (req, res) => {
     res.status(201).json({ inserted: r.rowCount });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// DEVICE REGISTRATION ENDPOINTS FOR PUSH NOTIFICATIONS
+// ============================================================================
+
+// Register or update a device for push notifications
+app.post('/devices/register', requireAppKey, async (req, res) => {
+  const v = DeviceRegistrationSchema.safeParse(req.body);
+  if (!v.success) return res.status(400).json({ error: 'validation failed', details: v.error.flatten() });
+  
+  try {
+    const registration = await registerDevice(v.data);
+    // Remove sensitive information from response
+    const { hasPushToken, ...safeRegistration } = registration;
+    res.status(201).json(safeRegistration);
+  } catch (e: any) {
+    console.error('Device registration failed:', e.message);
+    res.status(500).json({ error: 'registration failed' });
+  }
+});
+
+// Update an existing device registration
+app.patch('/devices/:deviceId', requireAppKey, async (req, res) => {
+  const deviceId = req.params.deviceId;
+  if (!deviceId) return res.status(400).json({ error: 'device ID required' });
+  
+  const v = DeviceUpdateSchema.safeParse(req.body);
+  if (!v.success) return res.status(400).json({ error: 'validation failed', details: v.error.flatten() });
+  
+  try {
+    const registration = await updateDevice(deviceId, v.data);
+    if (!registration) {
+      return res.status(404).json({ error: 'device not found' });
+    }
+    
+    // Remove sensitive information from response
+    const { hasPushToken, ...safeRegistration } = registration;
+    res.json(safeRegistration);
+  } catch (e: any) {
+    console.error('Device update failed:', e.message);
+    res.status(500).json({ error: 'update failed' });
+  }
+});
+
+// Get device registration details
+app.get('/devices/:deviceId', requireAppKey, async (req, res) => {
+  const deviceId = req.params.deviceId;
+  if (!deviceId) return res.status(400).json({ error: 'device ID required' });
+  
+  try {
+    const registration = await getDeviceRegistration(deviceId);
+    if (!registration) {
+      return res.status(404).json({ error: 'device not found' });
+    }
+    
+    // Remove sensitive information from response
+    const { hasPushToken, ...safeRegistration } = registration;
+    res.json(safeRegistration);
+  } catch (e: any) {
+    console.error('Failed to get device registration:', e.message);
+    res.status(500).json({ error: 'failed to get device' });
+  }
+});
+
+// Get all devices for a user
+app.get('/users/:userId/devices', requireAppKey, async (req, res) => {
+  const userId = req.params.userId;
+  if (!userId) return res.status(400).json({ error: 'user ID required' });
+  
+  try {
+    const devices = await getUserDevices(userId);
+    // Remove sensitive information from response
+    const safeDevices = devices.map(({ hasPushToken, ...device }) => device);
+    res.json(safeDevices);
+  } catch (e: any) {
+    console.error('Failed to get user devices:', e.message);
+    res.status(500).json({ error: 'failed to get devices' });
+  }
+});
+
+// Deactivate a device registration
+app.delete('/devices/:deviceId', requireAppKey, async (req, res) => {
+  const deviceId = req.params.deviceId;
+  if (!deviceId) return res.status(400).json({ error: 'device ID required' });
+  
+  try {
+    const deactivated = await deactivateDevice(deviceId);
+    if (!deactivated) {
+      return res.status(404).json({ error: 'device not found or already inactive' });
+    }
+    
+    res.status(204).send();
+  } catch (e: any) {
+    console.error('Failed to deactivate device:', e.message);
+    res.status(500).json({ error: 'failed to deactivate device' });
+  }
+});
+
+// Cleanup expired device registrations (maintenance endpoint)
+app.post('/devices/cleanup', requireAppKey, async (req, res) => {
+  try {
+    const cleanedCount = await cleanupExpiredRegistrations();
+    res.json({ cleanedUp: cleanedCount });
+  } catch (e: any) {
+    console.error('Failed to cleanup expired registrations:', e.message);
+    res.status(500).json({ error: 'cleanup failed' });
   }
 });
 
