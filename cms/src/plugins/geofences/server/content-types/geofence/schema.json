@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "geofences",
+  "info": {
+    "singularName": "geofence",
+    "pluralName": "geofences",
+    "displayName": "Geofence",
+    "description": "Geographic boundaries for location-based notifications"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "indexes": [
+      { "name": "geofence_tenant_name", "type": "index", "columns": ["tenant", "name"] },
+      { "name": "geofence_active", "type": "index", "columns": ["is_active"] }
+    ]
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "content-type-builder": {
+      "visible": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255,
+      "unique": false
+    },
+    "description": {
+      "type": "text"
+    },
+    "tenant": {
+      "type": "string",
+      "required": false,
+      "default": "public",
+      "maxLength": 100
+    },
+    "geometry_type": {
+      "type": "enumeration",
+      "enum": ["point_radius", "polygon"],
+      "required": true,
+      "default": "point_radius"
+    },
+    "center_latitude": {
+      "type": "decimal",
+      "required": false
+    },
+    "center_longitude": {
+      "type": "decimal",
+      "required": false
+    },
+    "radius_meters": {
+      "type": "integer",
+      "required": false,
+      "min": 1
+    },
+    "polygon_coordinates": {
+      "type": "json",
+      "required": false
+    },
+    "notification_template": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::geofences.notification-template",
+      "inversedBy": "geofences"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "suppression_window_seconds": {
+      "type": "integer",
+      "default": 300,
+      "min": 0
+    },
+    "hysteresis_buffer_meters": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "spec_id": {
+      "type": "string",
+      "required": true,
+      "default": "F-003",
+      "maxLength": 50
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 export default [
+  // Geospatial events endpoints (migrated from Express)
   {
     method: 'GET',
     path: '/events',
@@ -75,6 +76,23 @@ export default [
     method: 'DELETE',
     path: '/events/:id',
     handler: 'geolocation.delete',
+    config: {
+      policies: [],
+    },
+  },
+  // Geofence evaluation endpoints
+  {
+    method: 'POST',
+    path: '/geofence-evaluation/trigger',
+    handler: 'geofence-evaluation.trigger',
+    config: {
+      policies: [],
+    },
+  },
+  {
+    method: 'GET', 
+    path: '/geofence-evaluation/status',
+    handler: 'geofence-evaluation.status',
     config: {
       policies: [],
     },

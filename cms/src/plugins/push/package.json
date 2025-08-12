@@ -1,0 +1,29 @@
+{
+  "name": "strapi-plugin-push",
+  "version": "0.1.0",
+  "description": "Strapi plugin for push notification device registration",
+  "main": "./strapi-server.js",
+  "keywords": [
+    "strapi",
+    "plugin",
+    "push",
+    "notifications",
+    "azure"
+  ],
+  "author": "aprintz",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "@azure/notification-hubs": "^1.0.0",
+    "crypto-js": "^4.0.0"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^5.0.0"
+  },
+  "strapi": {
+    "name": "push",
+    "displayName": "Push Notifications",
+    "description": "Device registration for push notifications with Azure Notification Hub integration",
+    "kind": "plugin"
+  }
+}

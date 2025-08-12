@@ -1,17 +1,18 @@
 {
-  "name": "@strapi/plugin-geolocation",
-  "version": "0.1.0",
-  "description": "Geolocation plugin for Strapi with PostGIS integration",
-  "strapi": {
-    "name": "geolocation",
-    "description": "Geolocation services with PostGIS support",
-    "kind": "plugin",
-    "displayName": "Geolocation"
-  },
-  "dependencies": {},
+  "name": "geolocation",
+  "displayName": "Geolocation",
+  "description": "Geolocation plugin with PostGIS integration and geofence evaluation",
+  "version": "1.0.0",
   "author": {
     "name": "Strapi Solutions team"
   },
+  "strapi": {
+    "displayName": "Geolocation",
+    "name": "geolocation", 
+    "description": "Geolocation services with PostGIS support and geofence evaluation",
+    "kind": "plugin"
+  },
+  "dependencies": {},
   "maintainers": [
     {
       "name": "Strapi Solutions team"
