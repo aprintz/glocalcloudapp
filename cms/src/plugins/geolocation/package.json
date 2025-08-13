@@ -1,15 +1,26 @@
 {
   "name": "geolocation",
   "displayName": "Geolocation",
-  "description": "Geolocation plugin with geofence catch-up evaluation",
+  "description": "Geolocation plugin with PostGIS integration and geofence evaluation",
   "version": "1.0.0",
   "author": {
-    "name": "Developer"
+    "name": "Strapi Solutions team"
   },
   "strapi": {
     "displayName": "Geolocation",
     "name": "geolocation", 
-    "description": "Geolocation plugin with geofence catch-up evaluation",
+    "description": "Geolocation services with PostGIS support and geofence evaluation",
     "kind": "plugin"
-  }
+  },
+  "dependencies": {},
+  "maintainers": [
+    {
+      "name": "Strapi Solutions team"
+    }
+  ],
+  "engines": {
+    "node": ">=18.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "MIT"
 }

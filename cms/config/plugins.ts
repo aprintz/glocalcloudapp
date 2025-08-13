@@ -1,5 +1,5 @@
 export default () => ({
-  'geolocation': {
+  geolocation: {
     enabled: true,
     resolve: './src/plugins/geolocation'
   },

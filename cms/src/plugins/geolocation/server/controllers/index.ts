@@ -1,5 +1,7 @@
+import geolocation from './geolocation';
 import geofenceEvaluation from './geofence-evaluation';
 
-export default ({ strapi }) => ({
-  'geofence-evaluation': geofenceEvaluation({ strapi }),
-});
+export default {
+  geolocation,
+  'geofence-evaluation': geofenceEvaluation,
+};
